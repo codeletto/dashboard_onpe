@@ -2,6 +2,8 @@ import json
 import requests
 import pandas as pd
 import streamlit as st
+import os
+from datetime import datetime, timezone, timedelta
 
 st.set_page_config(page_title="Resultados Segunda Vuelta 2026", layout="centered")
 
@@ -44,6 +46,38 @@ def cargar_datos():
             registros = json.load(f)["data"]
         return normalizar(registros), "snapshot"
 
+HIST_PATH = "historial_votos.csv"
+
+def registrar_historico(candidatos):
+    # Marca de tiempo en hora de Perú (UTC-5)
+    peru = timezone(timedelta(hours=-5))
+    ahora = datetime.now(peru).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Votos actuales por agrupación, como diccionario {nombre: votos}
+    cur = {fila["Agrupacion"]: int(fila["Votos"]) for _, fila in candidatos.iterrows()}
+
+    # Cargamos el historial previo (si el archivo ya existe)
+    if os.path.exists(HIST_PATH):
+        historial = pd.read_csv(HIST_PATH)
+    else:
+        historial = pd.DataFrame(columns=["Fecha", "Agrupacion", "Votos"])
+
+    # Dedup: comparamos con la última toma. Si nada cambió, no registramos.
+    if not historial.empty:
+        ultima_fecha = historial["Fecha"].iloc[-1]
+        bloque = historial[historial["Fecha"] == ultima_fecha]
+        prev = {row["Agrupacion"]: int(row["Votos"]) for _, row in bloque.iterrows()}
+        if prev == cur:
+            return historial
+
+    # Si hubo cambios, agregamos una fila por candidato y guardamos
+    nuevas = pd.DataFrame(
+        [{"Fecha": ahora, "Agrupacion": k, "Votos": v} for k, v in cur.items()]
+    )
+    historial = pd.concat([historial, nuevas], ignore_index=True)
+    historial.to_csv(HIST_PATH, index=False)
+    return historial
+
 st.title("🗳️ Segunda Vuelta Presidencial 2026")
 st.caption("Datos desde la API pública de la ONPE")
 
@@ -68,8 +102,34 @@ for col, (_, fila) in zip([col1, col2], candidatos.iterrows()):
         delta=f"{int(fila['Votos']):,} votos",
     )
 
+# --- Diferencia de votos entre el 1° y el 2° ---
+lider = candidatos.iloc[0]
+segundo = candidatos.iloc[1]
+diferencia = int(lider["Votos"]) - int(segundo["Votos"])
+
+st.metric(
+    label=f"Diferencia a favor de {lider['Agrupacion']}",
+    value=f"{diferencia:,} votos",
+)
+
 st.subheader("Votos válidos por candidato")
 st.bar_chart(candidatos, x="Agrupacion", y="Votos")
 
 st.subheader("Detalle")
+
+
+# --- Histórico de votos ---
+st.subheader("📈 Histórico de votos")
+historial = registrar_historico(candidatos)
+
+# Gráfico de líneas: evolución de cada candidato en el tiempo
+pivote = historial.pivot_table(
+    index="Fecha", columns="Agrupacion", values="Votos", aggfunc="last"
+)
+st.line_chart(pivote)
+
+# Tabla del historial, lo más reciente primero
+st.dataframe(historial.sort_values("Fecha", ascending=False), hide_index=True)
+
+
 st.dataframe(df, hide_index=True)
