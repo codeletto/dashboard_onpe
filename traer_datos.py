@@ -1,9 +1,9 @@
 import requests
-import pandas as pd
+import json
 
-url = "https://resultadosegundavuelta.onpe.gob.pe/presentacion-backend/eleccion-presidencial/participantes-ubicacion-geografica-nombre?idEleccion=10&tipoFiltro=eleccion"
+URL = "https://resultadosegundavuelta.onpe.gob.pe/presentacion-backend/eleccion-presidencial/participantes-ubicacion-geografica-nombre?idEleccion=10&tipoFiltro=eleccion"
 
-headers = {
+HEADERS = {
     "accept": "*/*",
     "accept-language": "es-ES,es;q=0.9,en;q=0.8",
     "content-type": "application/json",
@@ -18,32 +18,10 @@ headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
 }
 
-respuesta = requests.get(url, headers=headers)
+respuesta = requests.get(URL, headers=HEADERS)
 datos = respuesta.json()
 
-# 1. Excavamos hasta la lista de registros
-registros = datos["data"]
+with open("data_snapshot.json", "w", encoding="utf-8") as f:
+    json.dump(datos, f, ensure_ascii=False, indent=2)
 
-# 2. La lista de registros se convierte en tabla en UNA línea
-df = pd.DataFrame(registros)
-
-# 3. Nos quedamos solo con las columnas útiles
-df = df[[
-    "nombreAgrupacionPolitica",
-    "nombreCandidato",
-    "totalVotosValidos",
-    "porcentajeVotosValidos",
-    "porcentajeVotosEmitidos",
-]]
-
-# 4. Les ponemos nombres legibles
-df = df.rename(columns={
-    "nombreAgrupacionPolitica": "Agrupacion",
-    "nombreCandidato": "Candidato",
-    "totalVotosValidos": "Votos",
-    "porcentajeVotosValidos": "Pct_Validos",
-    "porcentajeVotosEmitidos": "Pct_Emitidos",
-})
-
-# 5. Lo mostramos en la terminal
-print(df)
+print("Snapshot guardado en data_snapshot.json")

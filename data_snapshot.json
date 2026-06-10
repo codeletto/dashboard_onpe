@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "message": "",
+  "data": [
+    {
+      "nombreAgrupacionPolitica": "JUNTOS POR EL PERÚ",
+      "codigoAgrupacionPolitica": "10",
+      "nombreCandidato": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "dniCandidato": "16002918",
+      "totalVotosValidos": 8962202,
+      "porcentajeVotosValidos": 50.109,
+      "porcentajeVotosEmitidos": 46.834
+    },
+    {
+      "nombreAgrupacionPolitica": "FUERZA POPULAR",
+      "codigoAgrupacionPolitica": "8",
+      "nombreCandidato": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "dniCandidato": "10001088",
+      "totalVotosValidos": 8923295,
+      "porcentajeVotosValidos": 49.891,
+      "porcentajeVotosEmitidos": 46.63
+    },
+    {
+      "nombreAgrupacionPolitica": "VOTOS NULOS",
+      "codigoAgrupacionPolitica": "81",
+      "nombreCandidato": "",
+      "dniCandidato": "",
+      "totalVotosValidos": 1135661,
+      "porcentajeVotosEmitidos": 5.935
+    },
+    {
+      "nombreAgrupacionPolitica": "VOTOS EN BLANCO",
+      "codigoAgrupacionPolitica": "80",
+      "nombreCandidato": "",
+      "dniCandidato": "",
+      "totalVotosValidos": 115092,
+      "porcentajeVotosEmitidos": 0.601
+    }
+  ]
+}

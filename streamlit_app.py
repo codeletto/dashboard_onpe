@@ -1,8 +1,8 @@
+import json
 import requests
 import pandas as pd
 import streamlit as st
 
-# --- Configuración de la página ---
 st.set_page_config(page_title="Resultados Segunda Vuelta 2026", layout="centered")
 
 URL = "https://resultadosegundavuelta.onpe.gob.pe/presentacion-backend/eleccion-presidencial/participantes-ubicacion-geografica-nombre?idEleccion=10&tipoFiltro=eleccion"
@@ -22,36 +22,44 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
 }
 
-# --- Función que trae los datos ---
-# @st.cache_data guarda el resultado por 60 segundos (ttl=60) para no
-# pedirle a la ONPE en cada clic; pasados los 60s, vuelve a traer datos frescos.
-@st.cache_data(ttl=60)
-def traer_datos():
-    respuesta = requests.get(URL, headers=HEADERS)
-    df = pd.DataFrame(respuesta.json()["data"])
-    df = df.rename(columns={
+def normalizar(registros):
+    df = pd.DataFrame(registros)
+    return df.rename(columns={
         "nombreAgrupacionPolitica": "Agrupacion",
         "nombreCandidato": "Candidato",
         "totalVotosValidos": "Votos",
         "porcentajeVotosValidos": "Pct_Validos",
         "porcentajeVotosEmitidos": "Pct_Emitidos",
     })
-    return df
 
-# --- Título ---
+@st.cache_data(ttl=60)
+def cargar_datos():
+    # Intentamos datos en vivo; si la API no responde JSON, usamos el snapshot.
+    try:
+        respuesta = requests.get(URL, headers=HEADERS, timeout=10)
+        registros = respuesta.json()["data"]
+        return normalizar(registros), "vivo"
+    except Exception:
+        with open("data_snapshot.json", "r", encoding="utf-8") as f:
+            registros = json.load(f)["data"]
+        return normalizar(registros), "snapshot"
+
 st.title("🗳️ Segunda Vuelta Presidencial 2026")
-st.caption("Datos en tiempo real desde la API pública de la ONPE")
+st.caption("Datos desde la API pública de la ONPE")
 
-# --- Botón para actualizar manualmente ---
 if st.button("🔄 Actualizar datos"):
-    st.cache_data.clear()   # borra la caché para forzar una petición nueva
+    st.cache_data.clear()
 
-df = traer_datos()
+df, fuente = cargar_datos()
 
-# Separamos a los candidatos de los votos nulos/blancos
+if fuente == "vivo":
+    st.success("🟢 Datos en vivo desde la ONPE")
+else:
+    st.warning("🟡 Mostrando datos guardados — la API de la ONPE solo responde "
+               "a accesos desde Perú. Ejecuta la app localmente para verla en vivo.")
+
 candidatos = df[df["Candidato"] != ""].sort_values("Votos", ascending=False)
 
-# --- Tarjetas con el resultado de cada candidato ---
 col1, col2 = st.columns(2)
 for col, (_, fila) in zip([col1, col2], candidatos.iterrows()):
     col.metric(
@@ -60,10 +68,8 @@ for col, (_, fila) in zip([col1, col2], candidatos.iterrows()):
         delta=f"{int(fila['Votos']):,} votos",
     )
 
-# --- Gráfico de barras ---
 st.subheader("Votos válidos por candidato")
 st.bar_chart(candidatos, x="Agrupacion", y="Votos")
 
-# --- Tabla completa ---
 st.subheader("Detalle")
 st.dataframe(df, hide_index=True)
